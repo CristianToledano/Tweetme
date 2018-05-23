@@ -10,3 +10,12 @@ class FormUserMixin(object):
         else:
             form.errors[forms.forms.NON_FIELD_ERRORS] = ErrorList(['You need be logged'])
             return self.form_invalid(form)
+
+
+class UserOwnerMixin(FormUserMixin, object):
+    def form_valid(self, form):
+        if self.request.user.is_authenticated():
+            return super(FormUserMixin, self).form_valid(form)
+        else:
+            form.errors[forms.forms.NON_FIELD_ERRORS] = ErrorList(['U cannot modify this data need be logged'])
+            return self.form_invalid(form)

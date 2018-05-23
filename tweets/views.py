@@ -1,15 +1,25 @@
 # -*- coding: utf-8 -*-
-from django.views.generic import DetailView, ListView, CreateView
-from django.shortcuts import render
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import (CreateView,
+                                  DetailView,
+                                  DeleteView,
+                                  ListView,
+                                  UpdateView)
+from django.shortcuts import render, get_object_or_404
+
 from .forms import TweetModelForm
-from .mixins import FormUserMixin
+from .mixins import FormUserMixin, UserOwnerMixin
 from .models import Tweet
+from django.urls import reverse_lazy
 
 
-class TweetCreateView(CreateView, FormUserMixin):
+class TweetCreateView(FormUserMixin, CreateView):
     form_class = TweetModelForm
     template_name = 'create_view.html'
     success_url = '/tweet/create'
+
+    def form_invalid(self, form):
+        form.instance.user = self.request.user
 
 
 def tweet_create_view(request):
@@ -24,40 +34,34 @@ def tweet_create_view(request):
     return render(request, 'create_view.html', context)
 
 
+class TweetUpdateView(UpdateView, LoginRequiredMixin, UserOwnerMixin):
+    queryset = Tweet.objects.all()
+    form_class = TweetModelForm
+    template_name = "update_view.html"
+    success_url = '/tweet/list'
+
+
+class TweetDeleteView(LoginRequiredMixin, DeleteView):
+    model = Tweet
+    template_name = 'delete.confirm.html'
+    success_url = reverse_lazy('home')
+
+
 class TweetDetailView(DetailView):
     queryset = Tweet.objects.all()
-    template_name = "details_view.html"
-
-    def get_object(self):
-        obj = Tweet.objects.all()
-        context = []
-        for o in obj:
-            context.append(o)
-        return context
 
 
 class TweetListView(ListView):
     queryset = Tweet.objects.all()
-    template_name = "list_view.html"
 
-    def get_object(self):
-        return Tweet.objects.get(id=1)
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super(TweetListView, self).get_context_data(**kwargs)
+        return context
 
 
-# def tweet_detail_view(request, id=1):
-#     obj = Tweet.objects.all()
-#     for o in obj:
-#         context = {
-#             "object": obj
-#         }
-#     return render(request, "details_view.html", context)
-#
-#
-# def tweet_list_view(request):
-#     context = None
-#     queryset = Tweet.objects.all()
-#     for obj in queryset:
-#         context = {
-#             "objects_list": obj
-#         }
-#     return render(request, "list_view.html", context)
+def tweet_detail_view(request, pk=None):
+    obj = get_object_or_404(Tweet, pk=pk)
+    context = {
+        "object": obj
+    }
+    return render(request, "details_view.html", context)
